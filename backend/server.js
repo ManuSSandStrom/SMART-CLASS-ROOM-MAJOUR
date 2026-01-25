@@ -14,13 +14,20 @@ dotenv.config({ quiet: true });
 
 const app = express();
 
-app.use(express.json());
-
+// Task 3: Backend CORS & Preflight
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000"],
-  credentials: true
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
+app.options("*", cors());
+app.use(express.json());
+
+// Task 5: Health Check
+app.get("/", (req, res) => {
+  res.status(200).json({ status: "Backend running" });
+});
 
 app.use("/api/courses", coursesRouter);
 app.use("/api/faculty", facultyRouter);
@@ -31,10 +38,10 @@ app.use("/api/notifications", notificationsRouter);
 
 // Global Error Handler to catch 500 errors
 app.use((err, req, res, next) => {
-  console.error("❌ Unhandled Server Error:", err.stack);
+  console.error("Backend Error:", err.message, err.stack);
   res.status(500).json({ 
-    error: "Internal Server Error", 
-    message: err.message || "Something went wrong on the server." 
+    message: "Internal Server Error",
+    error: err.message
   });
 });
 
