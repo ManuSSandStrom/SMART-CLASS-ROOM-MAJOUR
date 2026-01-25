@@ -23,10 +23,11 @@ import {
   Home as HomeIcon,
   Bell,
 } from "lucide-react"
+import { API, logError } from "@/lib/utils"
 
 // Axios configuration
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: `${API}/api`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -48,7 +49,7 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
-    console.error("API Error:", error.response?.data || error.message)
+    logError(error, "API Error")
     return Promise.reject(error)
   },
 )
@@ -250,7 +251,7 @@ export default function TimetablePage() {
       const data = response.data
       setTimetables(Array.isArray(data) ? data : [])
     } catch (err) {
-      console.error("Error fetching timetables:", err)
+      logError(err, "Error fetching timetables")
       const errorMessage = err.response?.data?.error || err.message || "Failed to load timetables"
       setError(`Failed to load timetables: ${errorMessage}. Please check your backend connection.`)
       setTimetables([])
@@ -270,7 +271,7 @@ export default function TimetablePage() {
       setFaculty(Array.isArray(facultyRes.data) ? facultyRes.data : [])
       setRooms(Array.isArray(roomsRes.data) ? roomsRes.data : [])
     } catch (err) {
-      console.error("Error fetching supporting data:", err)
+      logError(err, "Error fetching supporting data")
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       setError(`Failed to load courses, faculty, or rooms data: ${errorMessage}`)
     }
@@ -284,7 +285,7 @@ export default function TimetablePage() {
       const response = await api.get(`/timetables/${id}`)
       setSelected(response.data)
     } catch (err) {
-      console.error("Error fetching timetable:", err)
+      logError(err, "Error fetching timetable")
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       if (err.response?.status === 404) {
         setError("Timetable not found.")
@@ -328,7 +329,7 @@ export default function TimetablePage() {
       setError(null)
       alert("Timetable generated successfully!")
     } catch (err) {
-      console.error("Error generating timetable:", err)
+      logError(err, "Error generating timetable")
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       setError(`Failed to generate timetable: ${errorMessage}`)
     } finally {
@@ -350,7 +351,7 @@ export default function TimetablePage() {
         alert("Optimization completed successfully!")
       }
     } catch (err) {
-      console.error("Error optimizing timetable:", err)
+      logError(err, "Error optimizing timetable")
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       setError(`Optimization failed: ${errorMessage}`)
     } finally {
@@ -369,7 +370,7 @@ export default function TimetablePage() {
         await viewTimetable(timetable._id)
       }
     } catch (err) {
-      console.error("Error updating timetable:", err)
+      logError(err, "Error updating timetable")
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       setError(`Failed to change timetable status: ${errorMessage}`)
     }
@@ -386,7 +387,7 @@ export default function TimetablePage() {
       }
       alert("Timetable deleted successfully")
     } catch (err) {
-      console.error("Error deleting timetable:", err)
+      logError(err, "Error deleting timetable")
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       if (err.response?.status === 404) {
         setError("Timetable not found.")

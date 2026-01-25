@@ -8,6 +8,7 @@ import { FacultyForm } from "@/components/Faculty-Form"
 import { DataTable } from "@/components/Data-table"
 import { Plus, Users, Mail, Clock, Calendar, LayoutDashboard, BookOpen, Home, Bell } from "lucide-react"
 import { Link } from "react-router-dom"
+import { API, logError } from "@/lib/utils"
 
 export default function FacultyPage() {
   const [faculty, setFaculty] = useState([])
@@ -39,10 +40,10 @@ export default function FacultyPage() {
   const fetchFaculty = async () => {
     setLoading(true)
     try {
-      const res = await axios.get("http://localhost:5000/api/faculty")
+      const res = await axios.get(`${API}/api/faculty`)
       setFaculty(Array.isArray(res.data) ? res.data : [])
     } catch (error) {
-      console.error(error)
+      logError(error, "Failed to fetch faculty")
       setFaculty([])
     } finally {
       setLoading(false)
@@ -57,15 +58,15 @@ export default function FacultyPage() {
     setFormLoading(true)
     try {
       if (editingFaculty) {
-        await axios.put(`http://localhost:5000/api/faculty/${editingFaculty._id}`, data)
+        await axios.put(`${API}/api/faculty/${editingFaculty._id}`, data)
       } else {
-        await axios.post("http://localhost:5000/api/faculty", data)
+        await axios.post(`${API}/api/faculty`, data)
       }
       setShowForm(false)
       setEditingFaculty(null)
       fetchFaculty()
     } catch (error) {
-      console.error(error)
+      logError(error, "Failed to save faculty")
     } finally {
       setFormLoading(false)
     }
@@ -73,14 +74,14 @@ export default function FacultyPage() {
 
   const handleDelete = async (facultyMember) => {
     try {
-      await axios.delete(`http://localhost:5000/api/faculty/${facultyMember._id}`)
+      await axios.delete(`${API}/api/faculty/${facultyMember._id}`)
       if (editingFaculty && editingFaculty._id === facultyMember._id) {
         setEditingFaculty(null)
         setShowForm(false)
       }
       fetchFaculty()
     } catch (error) {
-      console.error(error)
+      logError(error, "Failed to delete faculty")
     }
   }
 

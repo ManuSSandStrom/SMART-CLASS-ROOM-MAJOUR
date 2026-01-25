@@ -22,6 +22,7 @@ import {
   Check,
 } from "lucide-react"
 import { Link } from "react-router-dom"
+import { API, logError } from "@/lib/utils"
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([])
@@ -45,10 +46,10 @@ export default function NotificationsPage() {
   const fetchNotifications = async () => {
     setLoading(true)
     try {
-      const res = await axios.get("http://localhost:5000/api/notifications")
+      const res = await axios.get(`${API}/api/notifications`)
       setNotifications(Array.isArray(res.data) ? res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) : [])
     } catch (error) {
-      console.error("Error fetching notifications:", error)
+      logError(error, "Error fetching notifications")
       setNotifications([])
     } finally {
       setLoading(false)
@@ -63,12 +64,12 @@ export default function NotificationsPage() {
     e.preventDefault()
     setFormLoading(true)
     try {
-      await axios.post("http://localhost:5000/api/notifications", formData)
+      await axios.post(`${API}/api/notifications`, formData)
       resetForm()
       setShowForm(false)
       fetchNotifications()
     } catch (error) {
-      console.error("Error creating notification:", error)
+      logError(error, "Error creating notification")
     } finally {
       setFormLoading(false)
     }
@@ -77,10 +78,10 @@ export default function NotificationsPage() {
   const confirmDeleteNotification = async () => {
     if (!notificationToDelete) return
     try {
-      await axios.delete(`http://localhost:5000/api/notifications/${notificationToDelete._id}`)
+      await axios.delete(`${API}/api/notifications/${notificationToDelete._id}`)
       setNotifications((prev) => prev.filter((n) => n._id !== notificationToDelete._id))
     } catch (error) {
-      console.error("Error deleting notification:", error)
+      logError(error, "Error deleting notification")
     } finally {
       setNotificationToDelete(null) // Close the confirmation modal
     }
@@ -88,20 +89,20 @@ export default function NotificationsPage() {
 
   const handleMarkAsRead = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/notifications/${id}/read`)
+      await axios.put(`${API}/api/notifications/${id}/read`)
       setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
     } catch (error) {
-      console.error("Error marking as read:", error)
+      logError(error, "Error marking as read")
     }
   }
 
   const handleMarkAllRead = async () => {
     const unreadIds = notifications.filter((n) => !n.isRead).map((n) => n._id)
     try {
-      await Promise.all(unreadIds.map((id) => axios.put(`http://localhost:5000/api/notifications/${id}/read`)))
+      await Promise.all(unreadIds.map((id) => axios.put(`${API}/api/notifications/${id}/read`)))
       fetchNotifications()
     } catch (error) {
-      console.error("Error marking all as read:", error)
+      logError(error, "Error marking all as read")
     }
   }
 

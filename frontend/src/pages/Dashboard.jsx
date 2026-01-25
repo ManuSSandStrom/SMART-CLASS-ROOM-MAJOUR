@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Chatbot } from "@/components/Chatbot"
+import { API, logError } from "@/lib/utils"
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
@@ -48,11 +49,11 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         const [coursesRes, facultyRes, roomsRes, timetablesRes, notificationsRes] = await Promise.all([
-          axios.get("http://localhost:5000/api/courses"),
-          axios.get("http://localhost:5000/api/faculty"),
-          axios.get("http://localhost:5000/api/rooms"),
-          axios.get("http://localhost:5000/api/timetables"),
-          axios.get("http://localhost:5000/api/notifications"),
+          axios.get(`${API}/api/courses`),
+          axios.get(`${API}/api/faculty`),
+          axios.get(`${API}/api/rooms`),
+          axios.get(`${API}/api/timetables`),
+          axios.get(`${API}/api/notifications`),
         ])
 
         setCourses(coursesRes.data)
@@ -62,7 +63,7 @@ export default function Dashboard() {
         setNotifications(notificationsRes.data)
         setLoading(false)
       } catch (err) {
-        console.error("Failed to fetch data:", err)
+        logError(err, "Failed to fetch data")
         setLoading(false)
       }
     }

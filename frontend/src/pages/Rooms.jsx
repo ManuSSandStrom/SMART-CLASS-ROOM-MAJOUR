@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { DataTable } from "@/components/Data-table"
 import { Plus, Building, Users, Calendar, LayoutDashboard, BookOpen, Home, Bell, Edit, X, Clock } from "lucide-react"
 import { Link } from "react-router-dom"
+import { API, logError } from "@/lib/utils"
 
 export default function RoomPage() {
   const [rooms, setRooms] = useState([])
@@ -90,10 +91,10 @@ export default function RoomPage() {
   const fetchRooms = async () => {
     setLoading(true)
     try {
-      const res = await axios.get("http://localhost:5000/api/rooms")
+      const res = await axios.get(`${API}/api/rooms`)
       setRooms(res.data)
     } catch (error) {
-      console.error("Error fetching rooms:", error)
+      logError(error, "Error fetching rooms")
     } finally {
       setLoading(false)
     }
@@ -145,16 +146,16 @@ export default function RoomPage() {
       }
 
       if (editingRoom) {
-        await axios.put(`http://localhost:5000/api/rooms/${editingRoom._id}`, payload)
+        await axios.put(`${API}/api/rooms/${editingRoom._id}`, payload)
       } else {
-        await axios.post("http://localhost:5000/api/rooms", payload)
+        await axios.post(`${API}/api/rooms`, payload)
       }
 
       resetForm()
       setShowForm(false)
       fetchRooms()
     } catch (error) {
-      console.error("Error saving room:", error)
+      logError(error, "Error saving room")
     } finally {
       setFormLoading(false)
     }
@@ -165,14 +166,14 @@ export default function RoomPage() {
     if (!confirm("Are you sure you want to delete this room?")) return
 
     try {
-      await axios.delete(`http://localhost:5000/api/rooms/${id}`)
+      await axios.delete(`${API}/api/rooms/${id}`)
       if (editingRoom && editingRoom._id === id) {
         resetForm()
         setShowForm(false)
       }
       fetchRooms()
     } catch (error) {
-      console.error("Error deleting room:", error)
+      logError(error, "Error deleting room")
     }
   }
 

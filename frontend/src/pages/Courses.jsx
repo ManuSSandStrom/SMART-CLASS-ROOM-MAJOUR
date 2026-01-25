@@ -9,6 +9,7 @@ import { CourseForm } from "@/components/CourseForm"
 import { DataTable } from "@/components/Data-table"
 import { Plus, BookOpen, Users, Calendar, LayoutDashboard, Home, Bell } from "lucide-react"
 import { Link } from "react-router-dom"
+import { API, logError } from "@/lib/utils"
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState([])
@@ -41,10 +42,10 @@ export default function CoursesPage() {
   const fetchCourses = async () => {
     try {
       setLoading(true)
-      const res = await axios.get("http://localhost:5000/api/courses/")
+      const res = await axios.get(`${API}/api/courses/`)
       setCourses(res.data)
     } catch (err) {
-      console.error("Failed to fetch courses:", err)
+      logError(err, "Failed to fetch courses")
     } finally {
       setLoading(false)
     }
@@ -58,12 +59,12 @@ export default function CoursesPage() {
   const handleCreateCourse = async (courseData) => {
     try {
       setFormLoading(true)
-      await axios.post("http://localhost:5000/api/courses/", courseData)
+      await axios.post(`${API}/api/courses/`, courseData)
       setShowForm(false)
       setEditingCourse(null)
       fetchCourses()
     } catch (error) {
-      console.error("Failed to create course:", error)
+      logError(error, "Failed to create course")
     } finally {
       setFormLoading(false)
     }
@@ -73,12 +74,12 @@ export default function CoursesPage() {
   const handleUpdateCourse = async (id, courseData) => {
     try {
       setFormLoading(true)
-      await axios.put(`http://localhost:5000/api/courses/${id}`, courseData)
+      await axios.put(`${API}/api/courses/${id}`, courseData)
       setEditingCourse(null)
       setShowForm(false)
       fetchCourses()
     } catch (error) {
-      console.error("Failed to update course:", error)
+      logError(error, "Failed to update course")
     } finally {
       setFormLoading(false)
     }
@@ -87,7 +88,7 @@ export default function CoursesPage() {
   // Delete a course
   const handleDeleteCourse = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/courses/${id}`)
+      await axios.delete(`${API}/api/courses/${id}`)
       // if deleting the currently editing course, clear form
       if (editingCourse && editingCourse._id === id) {
         setEditingCourse(null)
@@ -95,7 +96,7 @@ export default function CoursesPage() {
       }
       fetchCourses()
     } catch (error) {
-      console.error("Failed to delete course:", error)
+      logError(error, "Failed to delete course")
     }
   }
 
