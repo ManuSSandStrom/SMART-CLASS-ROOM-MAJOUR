@@ -5,5 +5,5 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// Use this constant for all API calls: axios.get(`${API_URL}/api/...`)
-export const API_URL = import.meta.env.VITE_API_URL;
+// Use this constant for all API calls: axios.get(`${API}/api/...`)
+export const API = import.meta.env.VITE_API_URL;
