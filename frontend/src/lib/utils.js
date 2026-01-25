@@ -12,8 +12,8 @@ export const API = import.meta.env.VITE_API_URL;
 export const logError = (error, context = "API Error") => {
   console.error(`${context}:`, {
     message: error?.message,
-    response: error?.response?.data,
     status: error?.response?.status,
+    data: error?.response?.data,
     stack: error?.stack
   });
 };
