@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { DataTable } from "@/components/Data-table"
 import { Plus, Building, Users, Calendar, LayoutDashboard, BookOpen, Home, Bell, Edit, X, Clock } from "lucide-react"
 import { Link } from "react-router-dom"
-import { API, logError } from "@/lib/utils"
+
+const API = import.meta.env.VITE_API_URL || "https://smart-class-room-backend-5ne7.onrender.com";
 
 export default function RoomPage() {
   const [rooms, setRooms] = useState([])
@@ -94,7 +95,7 @@ export default function RoomPage() {
       const res = await axios.get(`${API}/api/rooms`)
       setRooms(res.data)
     } catch (error) {
-      logError(error, "Error fetching rooms")
+      console.error("API Error:", error?.message, error?.response?.data);
     } finally {
       setLoading(false)
     }
@@ -155,7 +156,7 @@ export default function RoomPage() {
       setShowForm(false)
       fetchRooms()
     } catch (error) {
-      logError(error, "Error saving room")
+      console.error("API Error:", error?.message, error?.response?.data);
     } finally {
       setFormLoading(false)
     }
@@ -173,7 +174,7 @@ export default function RoomPage() {
       }
       fetchRooms()
     } catch (error) {
-      logError(error, "Error deleting room")
+      console.error("API Error:", error?.message, error?.response?.data);
     }
   }
 

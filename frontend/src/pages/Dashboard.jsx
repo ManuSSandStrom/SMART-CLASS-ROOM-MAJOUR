@@ -21,7 +21,8 @@ import {
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Chatbot } from "@/components/Chatbot"
-import { API, logError } from "@/lib/utils"
+
+const API = import.meta.env.VITE_API_URL || "https://smart-class-room-backend-5ne7.onrender.com";
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
@@ -63,7 +64,7 @@ export default function Dashboard() {
         setNotifications(notificationsRes.data)
         setLoading(false)
       } catch (err) {
-        logError(err, "Failed to fetch data")
+        console.error("API Error:", err?.message, err?.response?.data);
         setLoading(false)
       }
     }
@@ -287,7 +288,7 @@ export default function Dashboard() {
           {/* Header */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="space-y-3">
-              <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent">
+              <h1 className="text-4xl lg:text-5xl font-bold leading-tight bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent">
                 Dashboard
               </h1>
               <p className="text-lg text-slate-300 max-w-2xl leading-relaxed">

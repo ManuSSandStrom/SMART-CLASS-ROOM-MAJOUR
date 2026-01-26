@@ -22,7 +22,8 @@ import {
   Check,
 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { API, logError } from "@/lib/utils"
+
+const API = import.meta.env.VITE_API_URL || "https://smart-class-room-backend-5ne7.onrender.com";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([])
@@ -49,7 +50,7 @@ export default function NotificationsPage() {
       const res = await axios.get(`${API}/api/notifications`)
       setNotifications(Array.isArray(res.data) ? res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) : [])
     } catch (error) {
-      logError(error, "Error fetching notifications")
+      console.error("API Error:", error?.message, error?.response?.data);
       setNotifications([])
     } finally {
       setLoading(false)
@@ -69,7 +70,7 @@ export default function NotificationsPage() {
       setShowForm(false)
       fetchNotifications()
     } catch (error) {
-      logError(error, "Error creating notification")
+      console.error("API Error:", error?.message, error?.response?.data);
     } finally {
       setFormLoading(false)
     }
@@ -81,7 +82,7 @@ export default function NotificationsPage() {
       await axios.delete(`${API}/api/notifications/${notificationToDelete._id}`)
       setNotifications((prev) => prev.filter((n) => n._id !== notificationToDelete._id))
     } catch (error) {
-      logError(error, "Error deleting notification")
+      console.error("API Error:", error?.message, error?.response?.data);
     } finally {
       setNotificationToDelete(null) // Close the confirmation modal
     }
@@ -92,7 +93,7 @@ export default function NotificationsPage() {
       await axios.put(`${API}/api/notifications/${id}/read`)
       setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
     } catch (error) {
-      logError(error, "Error marking as read")
+      console.error("API Error:", error?.message, error?.response?.data);
     }
   }
 
@@ -102,7 +103,7 @@ export default function NotificationsPage() {
       await Promise.all(unreadIds.map((id) => axios.put(`${API}/api/notifications/${id}/read`)))
       fetchNotifications()
     } catch (error) {
-      logError(error, "Error marking all as read")
+      console.error("API Error:", error?.message, error?.response?.data);
     }
   }
 

@@ -8,7 +8,8 @@ import { FacultyForm } from "@/components/Faculty-Form"
 import { DataTable } from "@/components/Data-table"
 import { Plus, Users, Mail, Clock, Calendar, LayoutDashboard, BookOpen, Home, Bell } from "lucide-react"
 import { Link } from "react-router-dom"
-import { API, logError } from "@/lib/utils"
+
+const API = import.meta.env.VITE_API_URL || "https://smart-class-room-backend-5ne7.onrender.com";
 
 export default function FacultyPage() {
   const [faculty, setFaculty] = useState([])
@@ -43,7 +44,7 @@ export default function FacultyPage() {
       const res = await axios.get(`${API}/api/faculty`)
       setFaculty(Array.isArray(res.data) ? res.data : [])
     } catch (error) {
-      logError(error, "Failed to fetch faculty")
+      console.error("API Error:", error?.message, error?.response?.data);
       setFaculty([])
     } finally {
       setLoading(false)
@@ -66,7 +67,7 @@ export default function FacultyPage() {
       setEditingFaculty(null)
       fetchFaculty()
     } catch (error) {
-      logError(error, "Failed to save faculty")
+      console.error("API Error:", error?.message, error?.response?.data);
     } finally {
       setFormLoading(false)
     }
@@ -81,7 +82,7 @@ export default function FacultyPage() {
       }
       fetchFaculty()
     } catch (error) {
-      logError(error, "Failed to delete faculty")
+      console.error("API Error:", error?.message, error?.response?.data);
     }
   }
 

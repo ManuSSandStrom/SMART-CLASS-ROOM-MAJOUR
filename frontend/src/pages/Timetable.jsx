@@ -10,8 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Trash2,
   Sparkles,
-  Download,
-  Share,
   AlertTriangle,
   Clock,
   User,
@@ -23,7 +21,8 @@ import {
   Home as HomeIcon,
   Bell,
 } from "lucide-react"
-import { API, logError } from "@/lib/utils"
+
+const API = import.meta.env.VITE_API_URL || "https://smart-class-room-backend-5ne7.onrender.com";
 
 // Axios configuration
 const api = axios.create({
@@ -35,7 +34,6 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`)
     return config
   },
   (error) => {
@@ -49,7 +47,7 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
-    logError(error, "API Error")
+    console.error("API Error:", error?.message, error?.response?.data);
     return Promise.reject(error)
   },
 )
@@ -70,14 +68,26 @@ function TimetableGrid({ timetable, courses, faculty, rooms }) {
     if (!timetable || !timetable.schedule) return null
     return (
       timetable.schedule.find(
-        (e) => e.day.toLowerCase() === day.toLowerCase() && `${e.startTime}-${e.endTime}` === slot,
+        (e) => e.day?.toLowerCase() === day.toLowerCase() && `${e.startTime}-${e.endTime}` === slot,
       ) || null
     )
   }
 
-  const findCourse = (id) => courses.find((c) => c._id === id) || null
-  const findFaculty = (id) => faculty.find((f) => f._id === id) || null
-  const findRoom = (id) => rooms.find((r) => r._id === id) || null
+  const findCourse = (id) => {
+    if (!id) return null
+    if (typeof id === "object") return id
+    return courses.find((c) => c._id === id) || null
+  }
+  const findFaculty = (id) => {
+    if (!id) return null
+    if (typeof id === "object") return id
+    return faculty.find((f) => f._id === id) || null
+  }
+  const findRoom = (id) => {
+    if (!id) return null
+    if (typeof id === "object") return id
+    return rooms.find((r) => r._id === id) || null
+  }
 
   const typeColor = (t) => {
     switch (t) {
@@ -170,16 +180,16 @@ function TimetableGrid({ timetable, courses, faculty, rooms }) {
                         )}`}
                       >
                         <div className="font-semibold leading-tight mb-2 line-clamp-2 text-base">
-                          {course ? `${course.name} (${course.code})` : entry.courseId}
+                          {course ? `${course.name} (${course.code || ""})` : (entry.courseId || "Unknown Course")}
                         </div>
                         <div className="space-y-1 text-xs opacity-90">
                           <div className="flex items-center gap-1 truncate">
                             <User className="h-3 w-3" />
-                            <span className="truncate">{prof ? prof.name : entry.facultyId}</span>
+                            <span className="truncate">{prof ? prof.name : (entry.facultyId || "Unknown Faculty")}</span>
                           </div>
                           <div className="flex items-center gap-1 truncate">
                             <MapPin className="h-3 w-3" />
-                            <span className="truncate">{room ? room.name : entry.roomId}</span>
+                            <span className="truncate">{room ? room.name : (entry.roomId || "Unknown Room")}</span>
                           </div>
                           <div className="mt-1">
                             <Badge variant="outline" className="text-xs px-1 py-0  text-white backdrop-blur-sm">
@@ -223,7 +233,6 @@ export default function TimetablePage() {
   const [selected, setSelected] = useState(null)
   const [loadingList, setLoadingList] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [optimizing, setOptimizing] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [courses, setCourses] = useState([])
   const [faculty, setFaculty] = useState([])
@@ -251,7 +260,7 @@ export default function TimetablePage() {
       const data = response.data
       setTimetables(Array.isArray(data) ? data : [])
     } catch (err) {
-      logError(err, "Error fetching timetables")
+      console.error("API Error:", err?.message, err?.response?.data);
       const errorMessage = err.response?.data?.error || err.message || "Failed to load timetables"
       setError(`Failed to load timetables: ${errorMessage}. Please check your backend connection.`)
       setTimetables([])
@@ -271,7 +280,7 @@ export default function TimetablePage() {
       setFaculty(Array.isArray(facultyRes.data) ? facultyRes.data : [])
       setRooms(Array.isArray(roomsRes.data) ? roomsRes.data : [])
     } catch (err) {
-      logError(err, "Error fetching supporting data")
+      console.error("API Error:", err?.message, err?.response?.data);
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       setError(`Failed to load courses, faculty, or rooms data: ${errorMessage}`)
     }
@@ -285,7 +294,7 @@ export default function TimetablePage() {
       const response = await api.get(`/timetables/${id}`)
       setSelected(response.data)
     } catch (err) {
-      logError(err, "Error fetching timetable")
+      console.error("API Error:", err?.message, err?.response?.data);
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       if (err.response?.status === 404) {
         setError("Timetable not found.")
@@ -329,33 +338,11 @@ export default function TimetablePage() {
       setError(null)
       alert("Timetable generated successfully!")
     } catch (err) {
-      logError(err, "Error generating timetable")
+      console.error("API Error:", err?.message, err?.response?.data);
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       setError(`Failed to generate timetable: ${errorMessage}`)
     } finally {
       setGenerating(false)
-    }
-  }
-
-  async function optimizeSelected() {
-    if (!selected) return
-    setOptimizing(true)
-    setError(null)
-    try {
-      const response = await api.post(`/timetables/${selected._id}/optimize`)
-      const result = response.data
-      await viewTimetable(selected._id)
-      if (result.suggestions && result.suggestions.length > 0) {
-        alert("Optimization complete!\n\nSuggestions:\n• " + result.suggestions.join("\n• "))
-      } else {
-        alert("Optimization completed successfully!")
-      }
-    } catch (err) {
-      logError(err, "Error optimizing timetable")
-      const errorMessage = err.response?.data?.error || err.message || "Unknown error"
-      setError(`Optimization failed: ${errorMessage}`)
-    } finally {
-      setOptimizing(false)
     }
   }
 
@@ -370,7 +357,7 @@ export default function TimetablePage() {
         await viewTimetable(timetable._id)
       }
     } catch (err) {
-      logError(err, "Error updating timetable")
+      console.error("API Error:", err?.message, err?.response?.data);
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       setError(`Failed to change timetable status: ${errorMessage}`)
     }
@@ -387,7 +374,7 @@ export default function TimetablePage() {
       }
       alert("Timetable deleted successfully")
     } catch (err) {
-      logError(err, "Error deleting timetable")
+      console.error("API Error:", err?.message, err?.response?.data);
       const errorMessage = err.response?.data?.error || err.message || "Unknown error"
       if (err.response?.status === 404) {
         setError("Timetable not found.")
@@ -395,18 +382,6 @@ export default function TimetablePage() {
         setError(`Failed to delete timetable: ${errorMessage}`)
       }
     }
-  }
-
-  function exportTimetable() {
-    if (!selected) return
-    const dataStr = JSON.stringify(selected, null, 2)
-    const dataBlob = new Blob([dataStr], { type: "application/json" })
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `${selected.name.replace(/\s+/g, "_")}.json`
-    link.click()
-    URL.revokeObjectURL(url)
   }
 
   const navigationItems = [

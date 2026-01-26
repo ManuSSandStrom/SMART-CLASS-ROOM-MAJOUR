@@ -9,7 +9,8 @@ import { CourseForm } from "@/components/CourseForm"
 import { DataTable } from "@/components/Data-table"
 import { Plus, BookOpen, Users, Calendar, LayoutDashboard, Home, Bell } from "lucide-react"
 import { Link } from "react-router-dom"
-import { API, logError } from "@/lib/utils"
+
+const API = import.meta.env.VITE_API_URL || "https://smart-class-room-backend-5ne7.onrender.com";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState([])
@@ -42,10 +43,10 @@ export default function CoursesPage() {
   const fetchCourses = async () => {
     try {
       setLoading(true)
-      const res = await axios.get(`${API}/api/courses/`)
+      const res = await axios.get(`${API}/api/courses`)
       setCourses(res.data)
     } catch (err) {
-      logError(err, "Failed to fetch courses")
+      console.error("API Error:", err?.message, err?.response?.data);
     } finally {
       setLoading(false)
     }
@@ -59,12 +60,12 @@ export default function CoursesPage() {
   const handleCreateCourse = async (courseData) => {
     try {
       setFormLoading(true)
-      await axios.post(`${API}/api/courses/`, courseData)
+      await axios.post(`${API}/api/courses`, courseData)
       setShowForm(false)
       setEditingCourse(null)
       fetchCourses()
     } catch (error) {
-      logError(error, "Failed to create course")
+      console.error("API Error:", error?.message, error?.response?.data);
     } finally {
       setFormLoading(false)
     }
@@ -79,7 +80,7 @@ export default function CoursesPage() {
       setShowForm(false)
       fetchCourses()
     } catch (error) {
-      logError(error, "Failed to update course")
+      console.error("API Error:", error?.message, error?.response?.data);
     } finally {
       setFormLoading(false)
     }
@@ -96,7 +97,7 @@ export default function CoursesPage() {
       }
       fetchCourses()
     } catch (error) {
-      logError(error, "Failed to delete course")
+      console.error("API Error:", error?.message, error?.response?.data);
     }
   }
 
