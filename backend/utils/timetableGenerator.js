@@ -11,11 +11,13 @@ dotenv.config({ quiet: true });
 
 // --- Configuration ---
 const WEEKS = 13;
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const CORE_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const OPTIONAL_DAY = 'Sunday';
 const TIME_SLOTS = [
   { start: '09:00', end: '10:00' },
   { start: '10:00', end: '11:00' },
   { start: '11:15', end: '12:15' },
+  { start: '13:15', end: '14:15' },
   { start: '14:15', end: '15:15' },
   { start: '15:15', end: '16:15' },
   { start: '16:30', end: '17:30' },
@@ -73,6 +75,92 @@ function parseAIResponse(text) {
   }
 }
 
+function specializationMatches(course, faculty) {
+  const courseText = `${course.name} ${course.code} ${course.department}`.toLowerCase();
+  return (faculty.specialization || []).some((item) =>
+    courseText.includes(String(item).toLowerCase())
+  );
+}
+
+function buildFallbackSchedule({ courses, faculty, rooms, includeSundaySpecialClass }) {
+  const days = includeSundaySpecialClass ? [...CORE_DAYS, OPTIONAL_DAY] : CORE_DAYS;
+  const facultyBusy = new Set();
+  const roomBusy = new Set();
+  const courseFacultyMap = new Map();
+  const schedule = [];
+  let dayCursor = 0;
+  let slotCursor = 0;
+
+  for (const course of courses) {
+    const weeklySessions = getWeeklySessions(course);
+    const assignedFaculty =
+      courseFacultyMap.get(String(course._id)) ||
+      faculty.find((member) => specializationMatches(course, member)) ||
+      faculty.find((member) => String(member.department).toLowerCase() === String(course.department).toLowerCase()) ||
+      faculty[0];
+
+    if (!assignedFaculty) {
+      throw new Error(`No faculty available to assign course ${course.name}.`);
+    }
+
+    courseFacultyMap.set(String(course._id), assignedFaculty);
+
+    for (let session = 0; session < weeklySessions; session += 1) {
+      let placed = false;
+
+      for (let attempt = 0; attempt < days.length * TIME_SLOTS.length; attempt += 1) {
+        const day = days[(dayCursor + attempt) % days.length];
+        const slot = TIME_SLOTS[(slotCursor + attempt) % TIME_SLOTS.length];
+        const room =
+          rooms.find((item) => {
+            if (course.type === 'lab') {
+              return item.type === 'lab';
+            }
+            return item.type !== 'lab' || rooms.length === 1;
+          }) || rooms[0];
+
+        if (!room) {
+          throw new Error("No rooms available to build the timetable.");
+        }
+
+        const facultyKey = `${assignedFaculty._id}-${day}-${slot.start}`;
+        const roomKey = `${room._id}-${day}-${slot.start}`;
+
+        if (facultyBusy.has(facultyKey) || roomBusy.has(roomKey)) {
+          continue;
+        }
+
+        facultyBusy.add(facultyKey);
+        roomBusy.add(roomKey);
+        schedule.push({
+          courseId: String(course._id),
+          facultyId: String(assignedFaculty._id),
+          roomId: String(room._id),
+          day,
+          startTime: slot.start,
+          endTime: slot.end,
+          courseName: course.name,
+          facultyName: assignedFaculty.name,
+          roomName: room.name,
+          timeSlot: `${slot.start}-${slot.end}`,
+          sessionType: day === OPTIONAL_DAY ? 'special' : course.type === 'lab' ? 'lab' : 'lecture',
+          isSpecialClass: day === OPTIONAL_DAY,
+        });
+        dayCursor = (dayCursor + 1) % days.length;
+        slotCursor = (slotCursor + 1) % TIME_SLOTS.length;
+        placed = true;
+        break;
+      }
+
+      if (!placed) {
+        throw new Error(`Unable to place session ${session + 1} for ${course.name} without conflicts.`);
+      }
+    }
+  }
+
+  return { schedule, days };
+}
+
 /**
  * Generates a timetable using only the Gemini AI.
  * request: { department, semester, academicYear }
@@ -82,11 +170,8 @@ export async function generateTimetableWithAI(request) {
   console.log('Request:', request);
 
   try {
-    const { department, semester, academicYear } = request;
-    
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is missing in environment variables.');
-    }
+    const { department, semester, academicYear, includeSundaySpecialClass = false } = request;
+
     if (!department || !semester || !academicYear) {
       throw new Error('Department, semester, and academic year are required.');
     }
@@ -126,7 +211,7 @@ export async function generateTimetableWithAI(request) {
       **Input Data:**
       - Department: "${department}"
       - Semester: ${semester}
-      - Available Days: ${JSON.stringify(DAYS)}
+      - Available Days: ${JSON.stringify(includeSundaySpecialClass ? [...CORE_DAYS, OPTIONAL_DAY] : CORE_DAYS)}
       - Available Time Slots: ${JSON.stringify(TIME_SLOTS)}
       - Mandatory Daily Break (DO NOT schedule classes here): ${BREAK_SLOT.start}-${BREAK_SLOT.end}
 
@@ -160,48 +245,54 @@ export async function generateTimetableWithAI(request) {
       Generate the full timetable now.
     `;
 
-    // 3. Call the OpenRouter API
-    console.log('Sending request to OpenRouter AI...');
-    
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:5000",
-        "X-Title": "Smart Classroom",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.0-flash-001",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    // 3. Call the AI provider when configured, then gracefully fall back to the local scheduler.
+    let schedule = [];
+    let daysUsed = includeSundaySpecialClass ? [...CORE_DAYS, OPTIONAL_DAY] : CORE_DAYS;
 
-    let data;
-    try {
-      data = await response.json();
-    } catch (parseError) {
-      const errorText = await response.text();
-      console.error("OpenRouter API returned non-JSON response:", errorText);
-      throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - Check logs for details.`);
+    if (process.env.OPENAI_API_KEY) {
+      console.log('Sending request to OpenRouter AI...');
+
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:5000",
+            "X-Title": "Smart Classroom",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.0-flash-001",
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok || data.error) {
+          throw new Error(data.error?.message || `API Error: ${response.statusText}`);
+        }
+
+        const responseText = data.choices?.[0]?.message?.content || "";
+        console.log('AI Response received (Raw):', responseText);
+        schedule = parseAIResponse(responseText);
+      } catch (aiError) {
+        console.error("AI generation failed, using fallback scheduler:", aiError.message);
+      }
     }
-
-    if (!response.ok || data.error) {
-      console.error("OpenRouter API Error:", JSON.stringify(data, null, 2));
-      throw new Error(data.error?.message || `API Error: ${response.statusText}`);
-    }
-
-    const responseText = data.choices?.[0]?.message?.content || "";
-    
-    console.log('AI Response received (Raw):', responseText);
-    
-    const schedule = parseAIResponse(responseText);
 
     if (schedule.length === 0) {
-      console.error("AI Response Text:", responseText);
-      throw new Error('AI failed to generate a valid schedule. The response was empty or invalid JSON.');
+      const fallback = buildFallbackSchedule({
+        courses: relevantCourses,
+        faculty: relevantFaculty,
+        rooms: allRooms,
+        includeSundaySpecialClass,
+      });
+      schedule = fallback.schedule;
+      daysUsed = fallback.days;
+      console.log(`Fallback scheduler generated ${schedule.length} schedule entries.`);
+    } else {
+      console.log(`AI generated ${schedule.length} schedule entries.`);
     }
-    console.log(`AI generated ${schedule.length} schedule entries.`);
 
     // 4. Enrich and Save the Timetable
     const enrichedSchedule = schedule.map(entry => {
@@ -218,7 +309,7 @@ export async function generateTimetableWithAI(request) {
     });
 
     const totalHours = enrichedSchedule.length;
-    const availableSlots = DAYS.length * TIME_SLOTS.length;
+    const availableSlots = daysUsed.length * TIME_SLOTS.length;
     const utilizationRate = Math.round((totalHours / availableSlots) * 100);
 
     const timetableData = {
@@ -232,7 +323,8 @@ export async function generateTimetableWithAI(request) {
       metadata: {
         totalHours,
         utilizationRate,
-        conflictCount: 0
+        conflictCount: 0,
+        teachingDays: daysUsed.length,
       }
     };
 

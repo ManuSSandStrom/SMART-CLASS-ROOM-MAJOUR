@@ -12,6 +12,16 @@ const ScheduleEntrySchema = new mongoose.Schema(
     },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
+    courseName: { type: String },
+    facultyName: { type: String },
+    roomName: { type: String },
+    timeSlot: { type: String },
+    sessionType: {
+      type: String,
+      enum: ["lecture", "lab", "tutorial", "special"],
+      default: "lecture",
+    },
+    isSpecialClass: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -35,6 +45,7 @@ const TimetableSchema = new mongoose.Schema(
       totalHours: { type: Number, default: 0 },
       utilizationRate: { type: Number, default: 0 },
       conflictCount: { type: Number, default: 0 },
+      teachingDays: { type: Number, default: 0 },
     },
   },
   { timestamps: true }

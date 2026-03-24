@@ -6,7 +6,7 @@ export const facultyRouter = Router();
 
 facultyRouter.get("/", async (req, res) => {
   try {
-    const faculty = await Faculty.find(); 
+    const faculty = await Faculty.find().sort({ createdAt: -1 }); 
     res.json(faculty);
   } catch (error) {
     console.error("Error fetching faculty:", error);
@@ -31,7 +31,11 @@ facultyRouter.get("/:id", async (req, res) => {
 
 facultyRouter.post("/", async (req, res) => {
   try {
-    const facultyMember = new Faculty(req.body);
+    const payload = {
+      ...req.body,
+      employeeId: req.body.employeeId ? String(req.body.employeeId).trim().toUpperCase() : undefined,
+    };
+    const facultyMember = new Faculty(payload);
     await facultyMember.save(); 
     res.status(201).json(facultyMember);
   } catch (error) {

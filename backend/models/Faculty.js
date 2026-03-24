@@ -12,7 +12,11 @@ const FacultySchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+    employeeId: { type: String, trim: true, uppercase: true },
     department: { type: String, required: true },
+    designation: { type: String, trim: true, default: "Lecturer" },
+    phone: { type: String, trim: true },
+    officeLocation: { type: String, trim: true },
     specialization: [{ type: String }],
     availability: {
       monday: [TimeSlotSchema],

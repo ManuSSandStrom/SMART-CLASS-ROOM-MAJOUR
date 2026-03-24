@@ -7,7 +7,15 @@ export const timetablesRouter = Router();
 // Get all timetables
 timetablesRouter.get("/", async (req, res) => {
   try {
-    const timetables = await Timetable.find();
+    const { department, semester } = req.query;
+    const query = {};
+    if (department) {
+      query.department = department;
+    }
+    if (semester) {
+      query.semester = String(semester);
+    }
+    const timetables = await Timetable.find(query).sort({ updatedAt: -1 });
     res.json(timetables);
   } catch (error) {
     console.error("Error fetching timetables:", error);
@@ -65,7 +73,6 @@ timetablesRouter.delete("/:id", async (req, res) => {
 
 // Generate timetable using AI
 timetablesRouter.post("/generate", async (req, res) => {
-
   console.log("Received generation request:", req.body);
   try {
     const createdTimetable = await generateTimetableWithAI(req.body);
