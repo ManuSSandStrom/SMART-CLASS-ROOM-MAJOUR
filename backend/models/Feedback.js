@@ -6,6 +6,8 @@ const FeedbackSchema = new mongoose.Schema(
     studentName: { type: String, required: true, trim: true },
     collegeId: { type: String, required: true, trim: true, uppercase: true },
     title: { type: String, required: true, trim: true },
+    lecturerId: { type: String, trim: true },
+    lecturerName: { type: String, trim: true },
     category: {
       type: String,
       enum: ["teaching", "facilities", "platform", "support", "general"],
@@ -15,7 +17,7 @@ const FeedbackSchema = new mongoose.Schema(
     message: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: ["new", "reviewed", "actioned"],
+      enum: ["new", "reviewed", "actioned", "shared_with_lecturer"],
       default: "new",
     },
     response: { type: String, trim: true },

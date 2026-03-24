@@ -40,7 +40,7 @@ const navItems = [
 
 const emptyAuthForm = { name: "", email: "", password: "", collegeId: "", department: "Computer Science", semester: 5, section: "A", role: "student" };
 const emptyIssueForm = { title: "", description: "", category: "academic", priority: "medium" };
-const emptyFeedbackForm = { title: "", category: "platform", rating: 5, message: "" };
+const emptyFeedbackForm = { title: "", category: "platform", rating: 5, lecturerId: "", lecturerName: "", message: "" };
 const emptyAttendanceForm = { studentName: "", collegeId: "", courseCode: "", courseName: "", facultyName: "", slotLabel: "09:00 - 10:00", status: "present", sessionType: "lecture" };
 const emptyLecturerForm = { name: "", email: "", employeeId: "", department: "Computer Science", designation: "Lecturer", phone: "", officeLocation: "", specialization: "AI, Data Structures" };
 const emptyTimetableForm = { department: "Computer Science", semester: 5, academicYear: new Date().getFullYear(), includeSundaySpecialClass: true };
@@ -161,6 +161,20 @@ function App() {
     }
   }
 
+  async function handleFeedbackStatusChange(feedbackId, status) {
+    try {
+      if (demoMode) {
+        updateCollection("feedback", (items) => items.map((item) => (item._id === feedbackId ? { ...item, status } : item)));
+      } else {
+        const response = await api.put(`/feedback/${feedbackId}`, { status });
+        updateCollection("feedback", (items) => items.map((item) => (item._id === feedbackId ? response.data : item)));
+      }
+      showMessage("Feedback status updated.");
+    } catch (error) {
+      showMessage(error.response?.data?.error || "Unable to update feedback.");
+    }
+  }
+
   async function handleTimetableGenerate(event) {
     event.preventDefault();
     try {
@@ -209,8 +223,8 @@ function App() {
               {activeSection === "timetable" ? <TimetableSection timetable={timetable} timetableForm={timetableForm} setTimetableForm={setTimetableForm} handleTimetableGenerate={handleTimetableGenerate} days={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]} /> : null}
               {activeSection === "attendance" ? <AttendanceSection attendanceForm={attendanceForm} setAttendanceForm={setAttendanceForm} attendance={portalData.attendance} submitRecord={submitRecord} emptyAttendanceForm={emptyAttendanceForm} /> : null}
               {activeSection === "issues" ? <IssuesSection issueForm={issueForm} setIssueForm={setIssueForm} issues={visibleIssues} currentUser={currentUser} submitRecord={submitRecord} isAdmin={isAdmin} handleIssueStatusChange={handleIssueStatusChange} emptyIssueForm={emptyIssueForm} /> : null}
-              {activeSection === "feedback" ? <FeedbackSection feedbackForm={feedbackForm} setFeedbackForm={setFeedbackForm} feedback={visibleFeedback} currentUser={currentUser} submitRecord={submitRecord} emptyFeedbackForm={emptyFeedbackForm} /> : null}
-              {activeSection === "admin" && isAdmin ? <AdminSection lecturerForm={lecturerForm} setLecturerForm={setLecturerForm} faculty={portalData.faculty} users={portalData.users} issues={portalData.issues} dashboard={portalData.dashboard} submitRecord={submitRecord} emptyLecturerForm={emptyLecturerForm} /> : null}
+              {activeSection === "feedback" ? <FeedbackSection feedbackForm={feedbackForm} setFeedbackForm={setFeedbackForm} feedback={visibleFeedback} currentUser={currentUser} submitRecord={submitRecord} emptyFeedbackForm={emptyFeedbackForm} faculty={portalData.faculty} /> : null}
+              {activeSection === "admin" && isAdmin ? <AdminSection lecturerForm={lecturerForm} setLecturerForm={setLecturerForm} faculty={portalData.faculty} users={portalData.users} issues={portalData.issues} feedback={portalData.feedback} attendance={portalData.attendance} dashboard={portalData.dashboard} submitRecord={submitRecord} emptyLecturerForm={emptyLecturerForm} handleFeedbackStatusChange={handleFeedbackStatusChange} /> : null}
             </div>
           </div>
         </main>

@@ -5,8 +5,11 @@ export const feedbackRouter = Router();
 
 feedbackRouter.get("/", async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, lecturerId } = req.query;
     const query = status ? { status } : {};
+    if (lecturerId) {
+      query.lecturerId = lecturerId;
+    }
     const feedback = await Feedback.find(query).sort({ createdAt: -1 });
     res.json(feedback);
   } catch (error) {
