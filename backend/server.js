@@ -18,7 +18,7 @@ import { dashboardRouter } from "./routes/dashboardRoute.js";
 dotenv.config({ quiet: true });
 
 const app = express();
-const allowedOrigins = [
+const exactOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://smartindiatrendbuild.netlify.app",
@@ -26,13 +26,33 @@ const allowedOrigins = [
   process.env.NETLIFY_URL,
 ].filter(Boolean);
 
+const allowedOriginPatterns = [
+  /^http:\/\/localhost(?::\d+)?$/,
+  /^https:\/\/.*\.netlify\.app$/,
+  /^https:\/\/.*\.vercel\.app$/,
+  /^https:\/\/.*\.onrender\.com$/,
+];
+
+function isAllowedOrigin(origin) {
+  if (!origin) {
+    return true;
+  }
+
+  if (exactOrigins.includes(origin)) {
+    return true;
+  }
+
+  return allowedOriginPatterns.some((pattern) => pattern.test(origin));
+}
+
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
+    console.warn(`CORS blocked for origin: ${origin}`);
+    return callback(null, false);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -40,14 +60,38 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
-app.use(cors(corsOptions));
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
+  if (isAllowedOrigin(origin)) {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header("Vary", "Origin");
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
-// Task 5: Health Check
 app.get("/", (req, res) => {
   res.status(200).json({ status: "Backend running" });
+});
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "smart-classroom-backend",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.use("/api/courses", coursesRouter);
