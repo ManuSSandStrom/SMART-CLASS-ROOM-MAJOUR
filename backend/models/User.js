@@ -16,6 +16,7 @@ const UserSchema = new mongoose.Schema(
     department: { type: String, trim: true },
     semester: { type: Number },
     section: { type: String, trim: true },
+    yearOfStudy: { type: Number },
     phone: { type: String, trim: true },
     status: {
       type: String,

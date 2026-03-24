@@ -6,8 +6,14 @@ export const usersRouter = Router();
 
 usersRouter.get("/", async (req, res) => {
   try {
-    const { role } = req.query;
+    const { role, department, section } = req.query;
     const query = role ? { role } : {};
+    if (department) {
+      query.department = department;
+    }
+    if (section) {
+      query.section = section;
+    }
     const users = await User.find(query).sort({ createdAt: -1 });
     res.json(users.map(sanitizeUser));
   } catch (error) {
@@ -27,6 +33,7 @@ usersRouter.post("/signup", async (req, res) => {
       department,
       semester,
       section,
+      yearOfStudy,
       phone,
       clerkId,
     } = req.body;
@@ -70,6 +77,7 @@ usersRouter.post("/signup", async (req, res) => {
       department,
       semester,
       section,
+      yearOfStudy,
       phone,
       clerkId,
       profileComplete: Boolean(normalizedCollegeId && department),

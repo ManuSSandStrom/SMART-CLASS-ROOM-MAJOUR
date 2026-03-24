@@ -14,6 +14,8 @@ import { attendanceRouter } from "./routes/attendanceRoute.js";
 import { issuesRouter } from "./routes/issuesRoute.js";
 import { feedbackRouter } from "./routes/feedbackRoute.js";
 import { dashboardRouter } from "./routes/dashboardRoute.js";
+import { holidaysRouter } from "./routes/holidaysRoute.js";
+import { seedDefaultAdmin } from "./utils/seedDefaultAdmin.js";
 
 dotenv.config({ quiet: true });
 
@@ -105,6 +107,7 @@ app.use("/api/attendance", attendanceRouter);
 app.use("/api/issues", issuesRouter);
 app.use("/api/feedback", feedbackRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/holidays", holidaysRouter);
 
 // Global Error Handler to catch 500 errors
 app.use((err, req, res, next) => {
@@ -117,6 +120,7 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   await dbConnect();
+  await seedDefaultAdmin();
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

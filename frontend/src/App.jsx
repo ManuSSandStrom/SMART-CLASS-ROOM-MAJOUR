@@ -41,8 +41,9 @@ const navItems = [
 const emptyAuthForm = { name: "", email: "", password: "", collegeId: "", department: "Computer Science", semester: 5, section: "A", role: "student" };
 const emptyIssueForm = { title: "", description: "", category: "academic", priority: "medium" };
 const emptyFeedbackForm = { title: "", category: "platform", rating: 5, lecturerId: "", lecturerName: "", message: "" };
-const emptyAttendanceForm = { studentName: "", collegeId: "", courseCode: "", courseName: "", facultyName: "", slotLabel: "09:00 - 10:00", status: "present", sessionType: "lecture" };
-const emptyLecturerForm = { name: "", email: "", employeeId: "", department: "Computer Science", designation: "Lecturer", phone: "", officeLocation: "", specialization: "AI, Data Structures" };
+const emptyLecturerForm = { name: "", email: "", employeeId: "", department: "Computer Science", designation: "Lecturer", phone: "", officeLocation: "", specialization: "AI, Data Structures", assignedSubjectName: "", assignedCourseCode: "", assignedSemester: 5, assignedSection: "A" };
+const emptyStudentForm = { name: "", email: "", password: "Student@123", collegeId: "", department: "Computer Science", semester: 5, section: "A", role: "student" };
+const emptyHolidayForm = { title: "", description: "", date: new Date().toISOString().slice(0, 10), department: "Computer Science", section: "A" };
 const emptyTimetableForm = { department: "Computer Science", semester: 5, academicYear: new Date().getFullYear(), includeSundaySpecialClass: true };
 
 function App() {
@@ -52,8 +53,9 @@ function App() {
   const [authForm, setAuthForm] = useState(emptyAuthForm);
   const [issueForm, setIssueForm] = useState(emptyIssueForm);
   const [feedbackForm, setFeedbackForm] = useState(emptyFeedbackForm);
-  const [attendanceForm, setAttendanceForm] = useState(emptyAttendanceForm);
   const [lecturerForm, setLecturerForm] = useState(emptyLecturerForm);
+  const [studentForm, setStudentForm] = useState(emptyStudentForm);
+  const [holidayForm, setHolidayForm] = useState(emptyHolidayForm);
   const [timetableForm, setTimetableForm] = useState(emptyTimetableForm);
   const [currentUser, setCurrentUser] = useState(demoPortalData.currentUser);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ function App() {
   async function loadPortalData() {
     setLoading(true);
     try {
-      const [dashboard, users, faculty, timetables, attendance, issues, feedback, notifications, courses] = await Promise.all([
+      const [dashboard, users, faculty, timetables, attendance, issues, feedback, notifications, courses, holidays] = await Promise.all([
         api.get("/dashboard/summary"),
         api.get("/users"),
         api.get("/faculty"),
@@ -88,8 +90,9 @@ function App() {
         api.get("/feedback"),
         api.get("/notifications"),
         api.get("/courses"),
+        api.get("/holidays"),
       ]);
-      setPortalData({ dashboard: dashboard.data, users: users.data, faculty: faculty.data, timetables: timetables.data, attendance: attendance.data, issues: issues.data, feedback: feedback.data, notifications: notifications.data, courses: courses.data, currentUser: demoPortalData.currentUser });
+      setPortalData({ dashboard: dashboard.data, users: users.data, faculty: faculty.data, timetables: timetables.data, attendance: attendance.data, issues: issues.data, feedback: feedback.data, notifications: notifications.data, courses: courses.data, holidays: holidays.data, currentUser: demoPortalData.currentUser });
       setDemoMode(false);
     } catch (_error) {
       setPortalData(demoPortalData);
@@ -190,6 +193,78 @@ function App() {
     }
   }
 
+  async function handleCreateStudent(event) {
+    event.preventDefault();
+    try {
+      if (demoMode) {
+        const created = { ...studentForm, _id: String(Date.now()), createdAt: new Date().toISOString() };
+        updateCollection("users", (items) => [created, ...items]);
+      } else {
+        const response = await api.post("/users/signup", studentForm);
+        updateCollection("users", (items) => [response.data.user, ...items]);
+      }
+      setStudentForm(emptyStudentForm);
+      showMessage("Student added and available for attendance.");
+    } catch (error) {
+      showMessage(error.response?.data?.error || "Unable to add student.");
+    }
+  }
+
+  async function handleCreateHoliday(event) {
+    event.preventDefault();
+    try {
+      if (demoMode) {
+        const holiday = { ...holidayForm, _id: String(Date.now()) };
+        const matchingStudents = portalData.users.filter((user) => user.role === "student" && user.department === holidayForm.department && user.section === holidayForm.section);
+        const records = matchingStudents.map((student) => ({
+          _id: `${student._id}-${holidayForm.date}`,
+          studentId: student._id,
+          studentName: student.name,
+          collegeId: student.collegeId,
+          department: student.department,
+          section: student.section,
+          semester: student.semester,
+          courseCode: "HOLIDAY",
+          courseName: "Holiday Attendance",
+          facultyName: "Administration",
+          date: holidayForm.date,
+          slotLabel: "Holiday",
+          sessionType: "special",
+          status: "present",
+          isHoliday: true,
+          holidayTitle: holidayForm.title,
+        }));
+        updateCollection("holidays", (items) => [holiday, ...items]);
+        updateCollection("attendance", (items) => [...records, ...items]);
+      } else {
+        const response = await api.post("/attendance/holiday", {
+          ...holidayForm,
+          markedBy: currentUser?.name || "Admin",
+        });
+        updateCollection("holidays", (items) => [response.data.holiday, ...items]);
+        await loadPortalData();
+      }
+      setHolidayForm(emptyHolidayForm);
+      showMessage("Holiday created and full attendance applied.");
+    } catch (error) {
+      showMessage(error.response?.data?.error || "Unable to create holiday attendance.");
+    }
+  }
+
+  async function handleBulkAttendanceSubmit(records) {
+    try {
+      if (demoMode) {
+        updateCollection("attendance", (items) => [...records.map((record) => ({ ...record, _id: `${record.studentId}-${Date.now()}` })), ...items]);
+      } else {
+        const response = await api.post("/attendance/bulk", { records });
+        updateCollection("attendance", (items) => [...response.data, ...items]);
+      }
+      showMessage("Daily attendance saved successfully.");
+    } catch (error) {
+      showMessage(error.response?.data?.error || "Unable to save daily attendance.");
+    }
+  }
+
   const isAdmin = currentUser?.role === "admin";
   const visibleIssues = isAdmin ? portalData.issues : portalData.issues.filter((item) => item.collegeId === currentUser?.collegeId);
   const visibleFeedback = isAdmin ? portalData.feedback : portalData.feedback.filter((item) => item.collegeId === currentUser?.collegeId);
@@ -221,10 +296,10 @@ function App() {
             <div className="mt-6 grid gap-6">
               {activeSection === "overview" ? <OverviewSection portalData={portalData} /> : null}
               {activeSection === "timetable" ? <TimetableSection timetable={timetable} timetableForm={timetableForm} setTimetableForm={setTimetableForm} handleTimetableGenerate={handleTimetableGenerate} days={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]} /> : null}
-              {activeSection === "attendance" ? <AttendanceSection attendanceForm={attendanceForm} setAttendanceForm={setAttendanceForm} attendance={portalData.attendance} submitRecord={submitRecord} emptyAttendanceForm={emptyAttendanceForm} /> : null}
+              {activeSection === "attendance" ? <AttendanceSection attendance={portalData.attendance} users={portalData.users} holidays={portalData.holidays || []} handleBulkAttendanceSubmit={handleBulkAttendanceSubmit} /> : null}
               {activeSection === "issues" ? <IssuesSection issueForm={issueForm} setIssueForm={setIssueForm} issues={visibleIssues} currentUser={currentUser} submitRecord={submitRecord} isAdmin={isAdmin} handleIssueStatusChange={handleIssueStatusChange} emptyIssueForm={emptyIssueForm} /> : null}
               {activeSection === "feedback" ? <FeedbackSection feedbackForm={feedbackForm} setFeedbackForm={setFeedbackForm} feedback={visibleFeedback} currentUser={currentUser} submitRecord={submitRecord} emptyFeedbackForm={emptyFeedbackForm} faculty={portalData.faculty} /> : null}
-              {activeSection === "admin" && isAdmin ? <AdminSection lecturerForm={lecturerForm} setLecturerForm={setLecturerForm} faculty={portalData.faculty} users={portalData.users} issues={portalData.issues} feedback={portalData.feedback} attendance={portalData.attendance} dashboard={portalData.dashboard} submitRecord={submitRecord} emptyLecturerForm={emptyLecturerForm} handleFeedbackStatusChange={handleFeedbackStatusChange} /> : null}
+              {activeSection === "admin" && isAdmin ? <AdminSection lecturerForm={lecturerForm} setLecturerForm={setLecturerForm} studentForm={studentForm} setStudentForm={setStudentForm} holidayForm={holidayForm} setHolidayForm={setHolidayForm} faculty={portalData.faculty} users={portalData.users} issues={portalData.issues} feedback={portalData.feedback} holidays={portalData.holidays || []} attendance={portalData.attendance} dashboard={portalData.dashboard} handleCreateStudent={handleCreateStudent} handleCreateHoliday={handleCreateHoliday} submitRecord={submitRecord} emptyLecturerForm={emptyLecturerForm} handleFeedbackStatusChange={handleFeedbackStatusChange} /> : null}
             </div>
           </div>
         </main>
@@ -289,6 +364,11 @@ function HeroSection({ authMode, setAuthMode, authForm, setAuthForm, handleAuthS
           {authMode === "signup" ? <div className="grid gap-3 md:grid-cols-3"><InputField label="Department" value={authForm.department} onChange={(value) => setAuthForm({ ...authForm, department: value })} /><InputField label="Semester" type="number" value={authForm.semester} onChange={(value) => setAuthForm({ ...authForm, semester: value })} /><InputField label="Section" value={authForm.section} onChange={(value) => setAuthForm({ ...authForm, section: value })} /></div> : null}
           <button type="submit" className="primary-button w-full justify-center">{authMode === "signin" ? "Enter portal" : "Register with unique ID"}</button>
         </form>
+        <div className="mt-4 rounded-3xl border border-sky-100 bg-sky-50/70 p-4 text-sm text-slate-600">
+          <p className="font-semibold text-slate-950">Admin login</p>
+          <p className="mt-1">Email: `admin@blueboard.edu`</p>
+          <p>Password: `Admin@123`</p>
+        </div>
       </div>
     </section>
   );

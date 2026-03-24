@@ -8,6 +8,7 @@ import Notification from "../models/Notification.js";
 import Room from "../models/Room.js";
 import Timetable from "../models/Timetable.js";
 import User from "../models/User.js";
+import Holiday from "../models/Holiday.js";
 
 export const dashboardRouter = Router();
 
@@ -23,6 +24,7 @@ dashboardRouter.get("/summary", async (_req, res) => {
       issues,
       feedback,
       notifications,
+      holidays,
     ] = await Promise.all([
       User.find().sort({ createdAt: -1 }),
       Faculty.find().sort({ createdAt: -1 }),
@@ -33,6 +35,7 @@ dashboardRouter.get("/summary", async (_req, res) => {
       Issue.find().sort({ createdAt: -1 }),
       Feedback.find().sort({ createdAt: -1 }),
       Notification.find().sort({ createdAt: -1 }),
+      Holiday.find().sort({ date: -1, createdAt: -1 }),
     ]);
 
     const presentCount = attendance.filter((item) => item.status === "present").length;
@@ -52,6 +55,7 @@ dashboardRouter.get("/summary", async (_req, res) => {
         attendanceRate,
         openIssues,
         averageFeedback,
+        holidayCount: holidays.length,
       },
       latest: {
         users: users.slice(0, 5),
@@ -59,6 +63,7 @@ dashboardRouter.get("/summary", async (_req, res) => {
         issues: issues.slice(0, 5),
         feedback: feedback.slice(0, 5),
         notifications: notifications.slice(0, 5),
+        holidays: holidays.slice(0, 5),
       },
       supportQueues: {
         issuesByStatus: {
@@ -70,11 +75,13 @@ dashboardRouter.get("/summary", async (_req, res) => {
           new: feedback.filter((item) => item.status === "new").length,
           reviewed: feedback.filter((item) => item.status === "reviewed").length,
           actioned: feedback.filter((item) => item.status === "actioned").length,
+          sharedWithLecturer: feedback.filter((item) => item.status === "shared_with_lecturer").length,
         },
       },
       campus: {
         rooms: rooms.length,
         notifications: notifications.length,
+        holidays: holidays.length,
       },
     });
   } catch (error) {

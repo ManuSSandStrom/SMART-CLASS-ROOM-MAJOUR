@@ -18,6 +18,15 @@ const FacultySchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     officeLocation: { type: String, trim: true },
     specialization: [{ type: String }],
+    assignedSubjects: [
+      {
+        subjectName: { type: String, trim: true },
+        courseCode: { type: String, trim: true, uppercase: true },
+        department: { type: String, trim: true },
+        semester: { type: Number },
+        section: { type: String, trim: true },
+      },
+    ],
     availability: {
       monday: [TimeSlotSchema],
       tuesday: [TimeSlotSchema],
